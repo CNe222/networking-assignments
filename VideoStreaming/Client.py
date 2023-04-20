@@ -68,7 +68,8 @@ class Client:
 	
 	def setupMovie(self):
 		"""Setup button handler."""
-	#TODO
+		if self.state == self.INIT:
+			self.sendRtspRequest(self.SETUP)
 	
 	def exitClient(self):
 		"""Teardown button handler."""
@@ -76,7 +77,8 @@ class Client:
 
 	def pauseMovie(self):
 		"""Pause button handler."""
-	#TODO
+		if self.state == self.PLAYING:
+			self.sendRtspRequest(self.PAUSE)
 	
 	def playMovie(self):
 		"""Play button handler."""
@@ -100,10 +102,57 @@ class Client:
 	
 	def sendRtspRequest(self, requestCode):
 		"""Send RTSP request to the server."""	
-		#-------------
-		# TO COMPLETE
-		#-------------
+		# Setup request
+		if requestCode == self.SETUP and self.state == self.INIT:
+			threading.Thread(target=self.recvRtspReply).start()
+			# Update RTSP sequence number.
+			# ...
+			
+			# Write the RTSP request to be sent.
+			# request = ...
+			
+			# Keep track of the sent request.
+			# self.requestSent = ...
 		
+		# Play request
+		elif requestCode == self.PLAY and self.state == self.READY:
+			# Update RTSP sequence number.
+			# ...
+			
+			# Write the RTSP request to be sent.
+			# request = ...
+			
+			# Keep track of the sent request.
+			# self.requestSent = ...
+		
+		# Pause request
+		elif requestCode == self.PAUSE and self.state == self.PLAYING:
+			# Update RTSP sequence number.
+			# ...
+			
+			# Write the RTSP request to be sent.
+			# request = ...
+			
+			# Keep track of the sent request.
+			# self.requestSent = ...
+			
+		# Teardown request
+		elif requestCode == self.TEARDOWN and not self.state == self.INIT:
+			# Update RTSP sequence number.
+			# ...
+			
+			# Write the RTSP request to be sent.
+			# request = ...
+			
+			# Keep track of the sent request.
+			# self.requestSent = ...
+		else:
+			return
+		
+		# Send the RTSP request using rtspSocket.
+		# ...
+		
+		print('\nData sent:\n' + request)
 	
 	
 	def recvRtspReply(self):
