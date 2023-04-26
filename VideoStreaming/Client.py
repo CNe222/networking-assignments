@@ -22,8 +22,9 @@ class Client:
 	# Initiation..
 	def __init__(self, master, serveraddr, serverport, rtpport, filename):
 		self.master = master
-		self.master.protocol("WM_DELETE_WINDOW", self.handler)
+		self.master.protocol("WM_DELETE_WINDOW", self.closeWindow)
 		self.createWidgets()
+		self.disableButtons()
 		self.serverAddr = serveraddr
 		self.serverPort = int(serverport)
 		self.rtpPort = int(rtpport)
@@ -65,27 +66,50 @@ class Client:
 		# Create a label to display the movie
 		self.label = Label(self.master, height=19)
 		self.label.grid(row=0, column=0, columnspan=4, sticky=W+E+N+S, padx=5, pady=5) 
+
+	# Disable buttons at each state
+	def disableButtons(self):
+		if self.state == self.INIT:
+			self.setup["state"] = "normal"
+			self.start["state"] = "disabled"
+			self.pause["state"] = "disabled"
+			self.teardown["state"] = "disabled"
+		elif self.state == self.READY:
+			self.setup["state"] = "disabled"
+			self.start["state"] = "normal"
+			self.pause["state"] = "disabled"
+			self.teardown["state"] = "normal"
+		elif self.state == self.PLAYING:
+			self.setup["state"] = "disabled"
+			self.start["state"] = "disabled"
+			self.pause["state"] = "normal"
+			self.teardown["state"] = "normal"
+
 	
 	def setupMovie(self):
 		"""Setup button handler."""
+		print("SETUP BUTTON")
 		if self.state == self.INIT:
 			self.sendRtspRequest(self.SETUP)
 	
 	def exitClient(self):
 		"""Teardown button handler."""
+		print("EXIT CLIENT")
 		self.sendRtspRequest(self.TEARDOWN)
 		# Destroy master thread (close the GUI)
 		self.master.destroy()
 		# Remove cache image stored in folder (ex: cache-123456.jpg)
-		os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)
+		# os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)
 
 	def pauseMovie(self):
 		"""Pause button handler."""
+		print("PAUSE BUTTON")
 		if self.state == self.PLAYING:
 			self.sendRtspRequest(self.PAUSE)
 	
 	def playMovie(self):
 		"""Play button handler."""
+		print("PLAY BUTTON")
 		if self.state == self.READY:
 			# Create new thread that listens for RTPpackets
 			threading.Thread(target=self.listenRtp).start()
@@ -99,7 +123,31 @@ class Client:
 	
 	def listenRtp(self):		
 		"""Listen for RTP packets."""
-		#TODO
+		while True:
+			try:
+				print("listenRtp...")
+				data = self.rtpSocket.recv(20480)
+				if data:
+					rtpPacket = RtpPacket()
+					rtpPacket.decode(data)
+					
+					currFrameNbr = rtpPacket.seqNum()
+					print("Current Seq Num: " + str(currFrameNbr))
+										
+					if currFrameNbr > self.frameNbr: # Discard the late packet
+						self.frameNbr = currFrameNbr
+						self.updateMovie(self.writeFrame(rtpPacket.getPayload()))
+			except:
+				# Stop listening upon requesting PAUSE or TEARDOWN
+				if self.playEvent.isSet(): 
+					break
+				
+				# Upon receiving ACK for TEARDOWN request,
+				# close the RTP socket
+				if self.teardownAcked == 1:
+					self.rtpSocket.shutdown(socket.SHUT_RDWR)
+					self.rtpSocket.close()
+					break
 					
 	def writeFrame(self, data):
 		"""Write the received frame to a temp image file. Return the image file."""
@@ -118,6 +166,10 @@ class Client:
 		
 	def connectToServer(self):
 		"""Connect to the Server. Start a new RTSP/TCP session."""
+		# Create a new socket socket.socket(family=AF_INET, type=SOCK_STREAM, proto=0, fileno=None)
+		# AF_INET is an address family for IPv4, AF_INET6 for IPv6
+		# SOCK_STREAM is for TCP socket
+		# SOCK_DGRAM is for UDP socket
 		self.rtspSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		try:
 			self.rtspSocket.connect((self.serverAddr, self.serverPort))
@@ -128,6 +180,8 @@ class Client:
 		"""Send RTSP request to the server."""	
 		# Setup request
 		if requestCode == self.SETUP and self.state == self.INIT:
+			print("request SETUP and state = INIT")
+			# target is the callable object to be invoked by the run() or the start() method
 			threading.Thread(target=self.recvRtspReply).start()
 			# Update RTSP sequence number.
 			# ...
@@ -140,6 +194,7 @@ class Client:
 		
 		# Play request
 		elif requestCode == self.PLAY and self.state == self.READY:
+			print("play")
 			# Update RTSP sequence number.
 			# ...
 			
@@ -151,6 +206,7 @@ class Client:
 		
 		# Pause request
 		elif requestCode == self.PAUSE and self.state == self.PLAYING:
+			print("pause")
 			# Update RTSP sequence number.
 			# ...
 			
@@ -162,6 +218,7 @@ class Client:
 			
 		# Teardown request
 		elif requestCode == self.TEARDOWN and not self.state == self.INIT:
+			print("tear down")
 			# Update RTSP sequence number.
 			# ...
 			
@@ -218,13 +275,16 @@ class Client:
 						# Open RTP port.
 						self.openRtpPort() 
 					elif self.requestSent == self.PLAY:
+						print("requestSent, play")
 						# self.state = ...
 					elif self.requestSent == self.PAUSE:
+						print("requestSent, pause")
 						# self.state = ...
 						
 						# The play thread exits. A new thread is created on resume.
 						self.playEvent.set()
 					elif self.requestSent == self.TEARDOWN:
+						print("requestSent, teardown")
 						# self.state = ...
 						
 						# Flag the teardownAcked to close the socket.
@@ -236,18 +296,22 @@ class Client:
 		# TO COMPLETE
 		#-------------
 		# Create a new datagram socket to receive RTP packets from the server
-		# self.rtpSocket = ...
+		# AF_INET is an address family for IPv4, AF_INET6 for IPv6
+		# SOCK_STREAM is for TCP socket
+		# SOCK_DGRAM is for UDP socket
+		self.rtpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		
 		# Set the timeout value of the socket to 0.5sec
-		# ...
+		self.rtpSocket.settimeout(0.5)
 		
 		try:
+			print("open rtp port")
 			# Bind the socket to the address using the RTP port given by the client user
-			# ...
+			self.rtpSocket.bind(('', self.rtpPort))
 		except:
 			tkinter.messagebox.showwarning('Unable to Bind', 'Unable to bind PORT=%d' %self.rtpPort)
 
-	def handler(self):
+	def closeWindow(self):
 		"""Handler on explicitly closing the GUI window."""
 		self.pauseMovie()
 		if tkinter.messagebox.askokcancel("Quit?", "Are you sure you want to quit?"):

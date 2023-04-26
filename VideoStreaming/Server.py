@@ -11,6 +11,7 @@ class Server:
 			print("[Usage: Server.py Server_port]\n")
 		rtspSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		rtspSocket.bind(('', SERVER_PORT))
+		# The system will allow 5 unaccepted connections before refusing new connections
 		rtspSocket.listen(5)        
 
 		# Receive client info (address,port) through RTSP/TCP session
