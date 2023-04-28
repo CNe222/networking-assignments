@@ -2,6 +2,7 @@ from tkinter import *
 import tkinter.messagebox
 from PIL import Image, ImageTk
 import socket, threading, sys, traceback, os
+import time
 
 from RtpPacket import RtpPacket
 
@@ -29,6 +30,7 @@ class Client:
 		self.serverPort = int(serverport)
 		self.rtpPort = int(rtpport)
 		self.fileName = filename
+		self.hasRtpSocket = False
 		self.rtspSeq = 0
 		self.sessionId = 0
 		self.requestSent = -1
@@ -60,7 +62,7 @@ class Client:
 		# Create Teardown button
 		self.teardown = Button(self.master, width=20, padx=3, pady=3)
 		self.teardown["text"] = "Teardown"
-		self.teardown["command"] =  self.exitClient
+		self.teardown["command"] =  self.teardownMovie
 		self.teardown.grid(row=1, column=3, padx=2, pady=2)
 		
 		# Create a label to display the movie
@@ -81,10 +83,9 @@ class Client:
 			self.teardown["state"] = "normal"
 		elif self.state == self.PLAYING:
 			self.setup["state"] = "disabled"
-			self.start["state"] = "normal"
+			self.start["state"] = "disabled"
 			self.pause["state"] = "normal"
 			self.teardown["state"] = "normal"
-
 	
 	def setupMovie(self):
 		"""Setup button handler."""
@@ -92,12 +93,13 @@ class Client:
 			self.sendRtspRequest(self.SETUP)
 	
 	def exitClient(self):
-		"""Teardown button handler."""
-		self.sendRtspRequest(self.TEARDOWN)
+		"""Close GUI button handler."""
 		# close the GUI
+		# if self.hasRtpSocket:
+		# 	self.rtpSocket.shutdown(socket.SHUT_RDWR)
+		# 	self.rtpSocket.close()
 		self.master.destroy()
-		# Remove cache image stored in folder (ex: cache-123456.jpg)
-		os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)
+		sys.exit(0)
 
 	def pauseMovie(self):
 		"""Pause button handler."""
@@ -113,9 +115,29 @@ class Client:
 			# The threading.Event provides an easy way to share a boolean variable _flag between threads that can act as a trigger for an action.
 			# Initially, _flag is false
 			self.playEvent = threading.Event()
-			# Ensure that _flag is false using clear method
 			self.sendRtspRequest(self.PLAY)
 
+	def reset(self):
+		self.state = self.INIT
+		self.disableButtons()
+		self.rtspSeq = 0
+		self.sessionId = 0
+		self.requestSent = -1
+		self.teardownAcked = 0
+		self.connectToServer()
+		self.frameNbr = 0
+		# self.rtpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+	def teardownMovie(self):
+		"""Teardown button handler."""
+		if self.state != self.INIT:
+		
+		# Remove cache image stored in folder (ex: cache-123456.jpg)
+			if os.path.isfile(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT):
+				os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)
+			self.sendRtspRequest(self.TEARDOWN)
+			time.sleep(0.5)
+			self.reset()
 	
 	def listenRtp(self):		
 		"""Listen for RTP packets."""
@@ -142,6 +164,7 @@ class Client:
 				if self.teardownAcked == 1:
 					self.rtpSocket.shutdown(socket.SHUT_RDWR)
 					self.rtpSocket.close()
+					self.hasRtpSocket = False
 					break
 					
 	def writeFrame(self, data):
@@ -192,7 +215,7 @@ class Client:
 			self.rtspSeq += 1
 			
 			# RTSP request string that we should send
-			req = "PLAY " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " Session: " + str(self.sessionId)
+			req = "PLAY " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + "\nSession: " + str(self.sessionId)
 			
 			# Keep track of sent request
 			self.requestSent = self.PLAY
@@ -203,22 +226,22 @@ class Client:
 			self.rtspSeq += 1
 			
 			# RTSP request string that we should send
-			req = "PAUSE " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " Session: " + str(self.sessionId)
+			req = "PAUSE " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + "\nSession: " + str(self.sessionId)
 			
 			# Keep track of sent request
 			self.requestSent = self.PAUSE
 			
 			
 		# Teardown request
-		elif requestCode == self.TEARDOWN and not self.state == self.INIT:
+		elif requestCode == self.TEARDOWN and self.state != self.INIT:
 			# Update RTSP seqnum
 			self.rtspSeq += 1
 			
 			# RTSP request string that we should send
-			req = "TEARDOWN " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " Session: " + str(self.sessionId)
+			req = "TEARDOWN " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + "\nSession: " + str(self.sessionId)
 			
 			# Keep track of sent request
-			self.requestSent = self.PAUSE
+			self.requestSent = self.TEARDOWN
 
 		else:
 			return
@@ -266,16 +289,16 @@ class Client:
 						# Update RTSP state.
 						self.state = self.READY
 						# Open RTP port.
-						self.openRtpPort() 
+						if not self.hasRtpSocket:
+							self.openRtpPort() 
 					elif self.requestSent == self.PLAY:
 						self.state = self.PLAYING
 					elif self.requestSent == self.PAUSE:
-						# self.state = ...
-						self.state=self.READY
-						# The play thread exits. A new thread is created on resume.
+						self.state = self.READY
+						# The play thread exits (set flag to exit while loop)
 						self.playEvent.set()
+
 					elif self.requestSent == self.TEARDOWN:
-						# self.state = ...
 						self.state = self.INIT
 						# Flag the teardownAcked to close the socket.
 						self.teardownAcked = 1 
@@ -294,7 +317,7 @@ class Client:
 		# SOCK_STREAM is for TCP socket
 		# SOCK_DGRAM is for UDP socket
 		self.rtpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		
+		self.hasRtpSocket = True
 		# Set the timeout value of the socket to 0.5sec
 		self.rtpSocket.settimeout(0.5)
 		
@@ -308,6 +331,7 @@ class Client:
 		"""Handler on explicitly closing the GUI window."""
 		self.pauseMovie()
 		if tkinter.messagebox.askokcancel("Quit?", "Are you sure you want to quit?"):
+			self.sendRtspRequest(self.TEARDOWN)
 			self.exitClient()
 		else: # When the user presses cancel, resume playing.
 			self.playMovie()

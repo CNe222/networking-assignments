@@ -104,8 +104,6 @@ class ServerWorker:
 			self.clientInfo['event'].set()
 			
 			self.replyRtsp(self.OK_200, seq[1])
-			
-			# Close the RTP socket
 			self.clientInfo['rtpSocket'].close()
 			
 	def sendRtp(self):
@@ -152,6 +150,7 @@ class ServerWorker:
 		if code == self.OK_200:
 			#print("200 OK")
 			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
+			print('Response:\n' + reply + '\n')
 			connSocket = self.clientInfo['rtspSocket'][0]
 			connSocket.send(reply.encode())
 		
