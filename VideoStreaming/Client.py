@@ -192,7 +192,7 @@ class Client:
 			self.rtspSeq += 1
 			
 			# RTSP request string that we should send
-			req = "PLAY " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq)
+			req = "PLAY " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " Session: " + str(self.sessionId)
 			
 			# Keep track of sent request
 			self.requestSent = self.PLAY
@@ -203,7 +203,7 @@ class Client:
 			self.rtspSeq += 1
 			
 			# RTSP request string that we should send
-			req = "PAUSE " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " SESSION: " + str(self.sessionId)
+			req = "PAUSE " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " Session: " + str(self.sessionId)
 			
 			# Keep track of sent request
 			self.requestSent = self.PAUSE
@@ -215,7 +215,7 @@ class Client:
 			self.rtspSeq += 1
 			
 			# RTSP request string that we should send
-			req = "TEARDOWN " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " SESSION: " + str(self.sessionId)
+			req = "TEARDOWN " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " Session: " + str(self.sessionId)
 			
 			# Keep track of sent request
 			self.requestSent = self.PAUSE
