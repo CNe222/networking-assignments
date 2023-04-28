@@ -13,6 +13,7 @@ class Server:
 		rtspSocket.bind(('', SERVER_PORT))
 		# The system will allow 5 unaccepted connections before refusing new connections
 		rtspSocket.listen(5)        
+		print("Server listening on port " + str(SERVER_PORT) + "...")
 
 		# Receive client info (address,port) through RTSP/TCP session
 		while True:
