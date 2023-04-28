@@ -200,7 +200,7 @@ class Client:
 		# Pause request
 		elif requestCode == self.PAUSE and self.state == self.PLAYING:
 			# Update RTSP seqnum
-			self.rtspSeq = self.rtspSeq + 1
+			self.rtspSeq += 1
 			
 			# RTSP request string that we should send
 			req = "PAUSE " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " SESSION: " + str(self.sessionId)
@@ -212,7 +212,7 @@ class Client:
 		# Teardown request
 		elif requestCode == self.TEARDOWN and not self.state == self.INIT:
 			# Update RTSP seqnum
-			self.rtspSeq = self.rtspSeq + 1
+			self.rtspSeq += 1
 			
 			# RTSP request string that we should send
 			req = "TEARDOWN " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " SESSION: " + str(self.sessionId)
