@@ -81,7 +81,7 @@ class Client:
 			self.teardown["state"] = "normal"
 		elif self.state == self.PLAYING:
 			self.setup["state"] = "disabled"
-			self.start["state"] = "disabled"
+			self.start["state"] = "normal"
 			self.pause["state"] = "normal"
 			self.teardown["state"] = "normal"
 
@@ -199,26 +199,26 @@ class Client:
 		
 		# Pause request
 		elif requestCode == self.PAUSE and self.state == self.PLAYING:
-			pass
 			# Update RTSP seqnum
-			
+			self.rtspSeq = self.rtspSeq + 1
 			
 			# RTSP request string that we should send
-			
+			req = "PAUSE " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " SESSION: " + str(self.sessionId)
 			
 			# Keep track of sent request
+			self.requestSent = self.PAUSE
 			
 			
 		# Teardown request
 		elif requestCode == self.TEARDOWN and not self.state == self.INIT:
-			pass
 			# Update RTSP seqnum
-			
+			self.rtspSeq = self.rtspSeq + 1
 			
 			# RTSP request string that we should send
-			
+			req = "TEARDOWN " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + " SESSION: " + str(self.sessionId)
 			
 			# Keep track of sent request
+			self.requestSent = self.PAUSE
 
 		else:
 			return
@@ -271,12 +271,12 @@ class Client:
 						self.state = self.PLAYING
 					elif self.requestSent == self.PAUSE:
 						# self.state = ...
-						
+						self.state=self.READY
 						# The play thread exits. A new thread is created on resume.
 						self.playEvent.set()
 					elif self.requestSent == self.TEARDOWN:
 						# self.state = ...
-						
+						self.state = self.INIT
 						# Flag the teardownAcked to close the socket.
 						self.teardownAcked = 1 
 
