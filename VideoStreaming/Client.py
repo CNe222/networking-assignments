@@ -94,10 +94,13 @@ class Client:
 	
 	def exitClient(self):
 		"""Close GUI button handler."""
+		if self.hasRtpSocket:
+			self.rtpSocket.shutdown(socket.SHUT_RDWR)
+			self.rtpSocket.close()
+		# Remove cache image stored in folder (ex: cache-123456.jpg)
+		if os.path.isfile(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT):
+			os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)
 		# close the GUI
-		# if self.hasRtpSocket:
-		# 	self.rtpSocket.shutdown(socket.SHUT_RDWR)
-		# 	self.rtpSocket.close()
 		self.master.destroy()
 		sys.exit(0)
 
@@ -131,8 +134,7 @@ class Client:
 	def teardownMovie(self):
 		"""Teardown button handler."""
 		if self.state != self.INIT:
-		
-		# Remove cache image stored in folder (ex: cache-123456.jpg)
+			# Remove cache image stored in folder (ex: cache-123456.jpg)
 			if os.path.isfile(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT):
 				os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)
 			self.sendRtspRequest(self.TEARDOWN)
@@ -255,10 +257,8 @@ class Client:
 		"""Receive RTSP reply from the server."""
 		while True:
 			reply = self.rtspSocket.recv(1024)
-			
 			if reply: 
 				self.parseRtspReply(reply.decode("utf-8"))
-			
 			# Close the RTSP socket upon requesting Teardown
 			if self.requestSent == self.TEARDOWN:
 				self.rtspSocket.shutdown(socket.SHUT_RDWR)
@@ -291,20 +291,21 @@ class Client:
 						# Open RTP port.
 						if not self.hasRtpSocket:
 							self.openRtpPort() 
+						self.disableButtons()
 					elif self.requestSent == self.PLAY:
 						self.state = self.PLAYING
+						self.disableButtons()
 					elif self.requestSent == self.PAUSE:
 						self.state = self.READY
 						# The play thread exits (set flag to exit while loop)
 						self.playEvent.set()
+						self.disableButtons()
 
 					elif self.requestSent == self.TEARDOWN:
 						self.state = self.INIT
 						# Flag the teardownAcked to close the socket.
 						self.teardownAcked = 1 
-
-					# Disable and activate buttons on each state of client
-					self.disableButtons()
+						
 
 	
 	def openRtpPort(self):
