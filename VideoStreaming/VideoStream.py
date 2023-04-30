@@ -65,5 +65,8 @@ class VideoStream:
 		"""Get frame number."""
 		return self.frameNum
 	
-
+	def getFPS(self):
+		data = cv2.VideoCapture(self)
+		fps = data.get(cv2.CAP_PROP_FPS)
+		return fps
 	
