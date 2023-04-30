@@ -10,7 +10,7 @@ class ServerWorker:
 	PAUSE = 'PAUSE'
 	TEARDOWN = 'TEARDOWN'
 	FORWARD = 'FORWARD'
-	PREV = 'PREVIOUS'
+	BACKWARD = 'BACKWARD'
 	
 	
 	INIT = 0
@@ -69,8 +69,11 @@ class ServerWorker:
 				# Generate a randomized RTSP session ID
 				self.clientInfo['session'] = randint(100000, 999999)
 				
-				# Send RTSP reply
-				self.replyRtsp(self.OK_200, seq[1])
+				# Send RTSP reply total_time
+				self.replySetup(self.OK_200, seq[1])
+
+				#send FPS
+				self.replySetup_FPS(self.OK_200, seq[1])
 				
 				# Get the RTP/UDP port from the last line
 				self.clientInfo['rtpPort'] = request[2].split(' ')[3]
@@ -180,6 +183,18 @@ class ServerWorker:
 		if code == self.OK_200:
 			totalTime = self.clientInfo['videoStream'].get_total_time_video()
 			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + '\nTotalTime: ' + str(totalTime)
+			connSocket = self.clientInfo['rtspSocket'][0]
+			connSocket.send(reply.encode())
+		# Error messages
+		elif code == self.FILE_NOT_FOUND_404:
+			print("404 NOT FOUND")
+		elif code == self.CON_ERR_500:
+			print("500 CONNECTION ERROR")
+	def replySetup_FPS(self, code, seq):
+		"""Send RTSP reply to the client."""
+		if code == self.OK_200:
+			FPS = self.clientInfo['videoStream'].getFPS()
+			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + '\nFPS: ' + str(FPS)
 			connSocket = self.clientInfo['rtspSocket'][0]
 			connSocket.send(reply.encode())
 		# Error messages
