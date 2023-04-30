@@ -31,6 +31,7 @@ class ServerWorker:
 		"""Receive RTSP request from the client."""
 		connSocket = self.clientInfo['rtspSocket'][0]
 		while True:            
+			# The maximum amount of data received at once is 256 bytes
 			data = connSocket.recv(256)
 			if data:
 				print("Data received:\n" + data.decode("utf-8"))
@@ -103,8 +104,6 @@ class ServerWorker:
 			self.clientInfo['event'].set()
 			
 			self.replyRtsp(self.OK_200, seq[1])
-			
-			# Close the RTP socket
 			self.clientInfo['rtpSocket'].close()
 			
 	def sendRtp(self):
@@ -151,6 +150,7 @@ class ServerWorker:
 		if code == self.OK_200:
 			#print("200 OK")
 			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
+			print('Response:\n' + reply + '\n')
 			connSocket = self.clientInfo['rtspSocket'][0]
 			connSocket.send(reply.encode())
 		
