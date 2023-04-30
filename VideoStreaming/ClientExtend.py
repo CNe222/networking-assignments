@@ -41,29 +41,30 @@ class ClientExtend:
 	# THIS GUI IS JUST FOR REFERENCE ONLY, STUDENTS HAVE TO CREATE THEIR OWN GUI 	
 	def createWidgets(self):
 		"""Build GUI."""
-		# Create Setup button
-		self.setup = Button(self.master, width=20, padx=3, pady=3)
-		self.setup["text"] = "Setup"
-		self.setup["command"] = self.setupMovie
-		self.setup.grid(row=1, column=0, padx=2, pady=2)
 		
 		# Create Play button		
-		self.start = Button(self.master, width=20, padx=3, pady=3)
-		self.start["text"] = "Play"
-		self.start["command"] = self.playMovie
-		self.start.grid(row=1, column=1, padx=2, pady=2)
+		self.startPause = Button(self.master, width=20, padx=3, pady=3)
+		self.startPause["text"] = "▶️"
+		self.startPause["command"] = self.playMovie
+		self.startPause.grid(row=1, column=0, padx=2, pady=2)
 		
-		# Create Pause button			
+		# Create Rewind button			
 		self.pause = Button(self.master, width=20, padx=3, pady=3)
-		self.pause["text"] = "Pause"
-		self.pause["command"] = self.pauseMovie
-		self.pause.grid(row=1, column=2, padx=2, pady=2)
+		self.pause["text"] = "⏪"
+		self.pause["command"] = self.rewindMovie
+		self.pause.grid(row=1, column=1, padx=2, pady=2)
 		
 		# Create Teardown button
 		self.teardown = Button(self.master, width=20, padx=3, pady=3)
-		self.teardown["text"] = "Teardown"
+		self.teardown["text"] = "⏹"
 		self.teardown["command"] =  self.teardownMovie
-		self.teardown.grid(row=1, column=3, padx=2, pady=2)
+		self.teardown.grid(row=1, column=2, padx=2, pady=2)
+
+		# Create Fast Foward button			
+		self.pause = Button(self.master, width=20, padx=3, pady=3)
+		self.pause["text"] = "⏩"
+		self.pause["command"] = self.fastForwardMovie
+		self.pause.grid(row=1, column=3, padx=2, pady=2)
 		
 		# Create a label to display the movie
 		self.label = Label(self.master, height=19)
@@ -72,25 +73,18 @@ class ClientExtend:
 	# Disable buttons at each state
 	def disableButtons(self):
 		if self.state == self.INIT:
-			self.setup["state"] = "normal"
-			self.start["state"] = "disabled"
-			self.pause["state"] = "disabled"
+			self.startPause["text"] = "▶️"
+			self.startPause["command"] = self.playMovie
 			self.teardown["state"] = "disabled"
 		elif self.state == self.READY:
-			self.setup["state"] = "disabled"
-			self.start["state"] = "normal"
-			self.pause["state"] = "disabled"
+			self.startPause["text"] = "▶️"
+			self.startPause["command"] = self.playMovie
 			self.teardown["state"] = "normal"
 		elif self.state == self.PLAYING:
-			self.setup["state"] = "disabled"
-			self.start["state"] = "disabled"
-			self.pause["state"] = "normal"
+			self.startPause["text"] = "⏸"
+			self.startPause["command"] = self.pauseMovie
 			self.teardown["state"] = "normal"
 	
-	def setupMovie(self):
-		"""Setup button handler."""
-		if self.state == self.INIT:
-			self.sendRtspRequest(self.SETUP)
 	
 	def exitClient(self):
 		"""Close GUI button handler."""
@@ -111,6 +105,11 @@ class ClientExtend:
 	
 	def playMovie(self):
 		"""Play button handler."""
+		if self.state == self.INIT:
+			self.sendRtspRequest(self.SETUP)
+			# Wait for state to update to READY, so it can play after that
+			while self.state != self.READY:
+				continue
 		if self.state == self.READY:
 			# Create new thread that listens for RTPpackets
 			threading.Thread(target=self.listenRtp).start()
@@ -140,6 +139,12 @@ class ClientExtend:
 			self.sendRtspRequest(self.TEARDOWN)
 			time.sleep(0.5)
 			self.reset()
+
+	def fastForwardMovie(self):
+		pass
+
+	def rewindMovie(self):
+		pass
 	
 	def listenRtp(self):		
 		"""Listen for RTP packets."""
