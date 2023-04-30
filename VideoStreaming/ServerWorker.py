@@ -9,6 +9,9 @@ class ServerWorker:
 	PLAY = 'PLAY'
 	PAUSE = 'PAUSE'
 	TEARDOWN = 'TEARDOWN'
+	FORWARD = 'FORWARD'
+	PREV = 'PREVIOUS'
+	
 	
 	INIT = 0
 	READY = 1
@@ -23,6 +26,7 @@ class ServerWorker:
 	
 	def __init__(self, clientInfo):
 		self.clientInfo = clientInfo
+		self.backWard = 0
 		
 	def run(self):
 		threading.Thread(target=self.recvRtspRequest).start()
@@ -86,7 +90,12 @@ class ServerWorker:
 				self.clientInfo['event'] = threading.Event()
 				self.clientInfo['worker']= threading.Thread(target=self.sendRtp) 
 				self.clientInfo['worker'].start()
-		
+		#Process forward video request
+		elif requestType == self.FORWARD and self.state != self.INIT:
+			self.forwardStream()
+		#process backward video request
+		elif requestType == self.PREV and self.state != self.INIT:
+			self.backWard = 1
 		# Process PAUSE request
 		elif requestType == self.PAUSE:
 			if self.state == self.PLAYING:
@@ -106,6 +115,8 @@ class ServerWorker:
 			self.replyRtsp(self.OK_200, seq[1])
 			self.clientInfo['rtpSocket'].close()
 			
+	def forwardStream(self):
+		self.clientInfo['videoStream'].setForward()			
 	def sendRtp(self):
 		"""Send RTP packets over UDP."""
 		while True:
@@ -115,7 +126,11 @@ class ServerWorker:
 			if self.clientInfo['event'].isSet(): 
 				break 
 				
-			data = self.clientInfo['videoStream'].nextFrame()
+			if not self.backWard:
+				data = self.clientInfo['videoStream'].nextFrame()
+			else:
+				data = self.clientInfo['videoStream'].prevFrame()
+				self.backWard = 0
 			if data: 
 				frameNumber = self.clientInfo['videoStream'].frameNbr()
 				try:
@@ -154,6 +169,19 @@ class ServerWorker:
 			connSocket = self.clientInfo['rtspSocket'][0]
 			connSocket.send(reply.encode())
 		
+		# Error messages
+		elif code == self.FILE_NOT_FOUND_404:
+			print("404 NOT FOUND")
+		elif code == self.CON_ERR_500:
+			print("500 CONNECTION ERROR")
+	
+	def replySetup(self, code, seq):
+		"""Send RTSP reply to the client."""
+		if code == self.OK_200:
+			totalTime = self.clientInfo['videoStream'].get_total_time_video()
+			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session']) + '\nTotalTime: ' + str(totalTime)
+			connSocket = self.clientInfo['rtspSocket'][0]
+			connSocket.send(reply.encode())
 		# Error messages
 		elif code == self.FILE_NOT_FOUND_404:
 			print("404 NOT FOUND")
