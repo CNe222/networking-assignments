@@ -21,6 +21,12 @@ class ClientExtend:
 	TEARDOWN = 3
 	FORWARD = 5
 	BACKWARD = 6
+	
+	firstPlay = True
+	isPlaying = False
+	counter = 0
+
+
 	# Initiation..
 	def __init__(self, master, serveraddr, serverport, rtpport, filename):
 		self.master = master
@@ -43,6 +49,15 @@ class ClientExtend:
 		self.currentTime = 0
 		self.totalTime = 0
 		self.FPS = 0
+		
+		self.beginTimer = 0 
+		self.endTimer = 0
+		self.totalTime = 0
+		self.totalPackets = 0
+		self.bytes = 0
+		self.packets = 0
+		self.packetsLost = 0
+		self.lastSequence = 0
 		
 	# THIS GUI IS JUST FOR REFERENCE ONLY, STUDENTS HAVE TO CREATE THEIR OWN GUI 	
 	def createWidgets(self):
@@ -131,6 +146,11 @@ class ClientExtend:
 		self.master.destroy()
 		sys.exit(0)
 
+	def setupMovie(self):
+		"""Setup button handler."""
+		if self.state == self.INIT:
+			self.sendRtspRequest(self.SETUP)
+
 	def pauseMovie(self):
 		"""Pause button handler."""
 		if self.state == self.PLAYING:
@@ -139,12 +159,26 @@ class ClientExtend:
 	def playMovie(self):
 		"""Play button handler."""
 		if self.state == self.INIT:
-			self.sendRtspRequest(self.SETUP)
+			self.firstPlay = False
+			self.isPlaying = True
+			self.beginTimer = 0 
+			self.endTimer = 0
+			self.totalTime = 0
+			self.totalPackets = 0
+			self.bytes = 0
+			self.packets = 0
+			self.packetsLost = 0
+			self.lastSequence = 0
+			self.prevPacketArrivalTime = 0
+			# self.sendRtspRequest(self.SETUP)
+			self.setupMovie()
 			# Wait for state to update to READY, so it can play after that
 			while self.state != self.READY:
 				continue
+
 		if self.state == self.READY:
 			# Create new thread that listens for RTPpackets
+			# self.isPlaying = True
 			threading.Thread(target=self.listenRtp).start()
 			# Implement new event and assign to self.playEvent
 			# The threading.Event provides an easy way to share a boolean variable _flag between threads that can act as a trigger for an action.
@@ -203,23 +237,35 @@ class ClientExtend:
 					rtpPacket = RtpPacket()
 					rtpPacket.decode(data)
 					
+					packetArrivalTime = time.perf_counter()
 					currFrameNbr = rtpPacket.seqNum()
 					self.currentTime = int(currFrameNbr  // self.FPS)
 					print("Current Seq Num: " + str(currFrameNbr))
+					self.bytes += len(rtpPacket.getPacket())
 										
 					if currFrameNbr > self.frameNbr: # Discard the late packet
+						print(currFrameNbr)
 						self.frameNbr = currFrameNbr
 						self.updateMovie(self.writeFrame(rtpPacket.getPayload()))
 					self.totalTimeLabel.configure(text="Total time: %02d:%02d" % (self.totalTime // 60, self.totalTime % 60))
 					self.remainingTimeLabel.configure(text="Remaining time: %02d:%02d" % ((self.totalTime - self.currentTime)// 60, (self.totalTime - self.currentTime) % 60))
+
+					#Update packets statistical information
+					self.totalPackets += 1
+					self.packets += 1
+					self.packetsLost += currFrameNbr - self.lastSequence - 1
+					self.lastSequence = currFrameNbr
+
 			except:
 				# Stop listening upon requesting PAUSE or TEARDOWN
 				if self.playEvent.isSet(): 
+					self.displayStats()
 					break
 				
 				# Upon receiving ACK for TEARDOWN request,
 				# close the RTP socket
 				if self.teardownAcked == 1:
+					self.displayStats()
 					self.rtpSocket.shutdown(socket.SHUT_RDWR)
 					self.rtpSocket.close()
 					self.hasRtpSocket = False
@@ -361,18 +407,54 @@ class ClientExtend:
 						self.disableButtons()
 					elif self.requestSent == self.PLAY:
 						self.state = self.PLAYING
+
+						if self.beginTimer == 0:
+							self.beginTimer = time.perf_counter()
+
 						self.disableButtons()
 					elif self.requestSent == self.PAUSE:
 						self.state = self.READY
+						if self.beginTimer > 0:
+							self.endTimer = time.perf_counter()
+							self.totalTime += self.endTimer - self.beginTimer
+							self.beginTimer = 0
+
 						# The play thread exits (set flag to exit while loop)
 						self.playEvent.set()
 						self.disableButtons()
 
 					elif self.requestSent == self.TEARDOWN:
 						self.state = self.INIT
+						self.endTimer = time.perf_counter()
 						# Flag the teardownAcked to close the socket.
+						self.totalTime += self.endTimer - self.beginTimer
 						self.teardownAcked = 1 
 						
+	def displayStats(self):
+		"""Displays observed statistics"""
+		packetLossRate = ((self.counter) / (self.totalPackets)) * 100
+		
+		top1 = Toplevel()
+		top1.title("Statistics")
+		top1.geometry('300x170')
+		Lb2 = Listbox(top1, width=80, height=20)
+		
+		listbox_info = [
+    		f"Current Packets No.{self.frameNbr}",
+    		f"Total Streaming Packets: {self.totalPackets} packets",
+    		f"Packets Received: {self.packets} packets",
+    		f"Packets Lost: {self.counter} packets",
+    		f"Packet Loss Rate: {packetLossRate}%",
+    		f"Play time: {self.totalTime:.2f} seconds",
+    		f"Bytes received: {self.bytes} bytes",
+    		f"Video Data Rate: {int(self.bytes / self.totalTime)} bytes per second",
+		]
+
+		# Insert the information into the listbox
+		for info in listbox_info:
+			Lb2.insert(END, info)
+		
+		Lb2.pack()
 
 	
 	def openRtpPort(self):
