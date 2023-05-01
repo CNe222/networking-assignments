@@ -52,7 +52,7 @@ class ClientExtend:
 		
 		self.beginTimer = 0 
 		self.endTimer = 0
-		self.totalTime = 0
+		self.totalTimer = 0
 		self.totalPackets = 0
 		self.bytes = 0
 		self.packets = 0
@@ -70,10 +70,10 @@ class ClientExtend:
 		self.startPause.grid(row=1, column=0, padx=2, pady=2)
 		
 		# Create Rewind button			
-		self.pause = Button(self.master, width=20, padx=3, pady=3)
-		self.pause["text"] = "⏪"
-		self.pause["command"] = self.rewindMovie
-		self.pause.grid(row=1, column=1, padx=2, pady=2)
+		self.backward = Button(self.master, width=20, padx=3, pady=3)
+		self.backward["text"] = "⏪"
+		self.backward["command"] = self.backwardVideo
+		self.backward.grid(row=1, column=1, padx=2, pady=2)
 		
 		# Create Teardown button
 		self.teardown = Button(self.master, width=20, padx=3, pady=3)
@@ -82,11 +82,10 @@ class ClientExtend:
 		self.teardown.grid(row=1, column=2, padx=2, pady=2)
 
 		# Create Fast Foward button			
-		self.pause = Button(self.master, width=20, padx=3, pady=3)
-		self.pause["text"] = "⏩"
-		self.pause["command"] = self.fastForwardMovie
-		self.pause.grid(row=1, column=3, padx=2, pady=2)
-		self.teardown.grid(row=1, column=5, padx=2, pady=2)
+		self.forward = Button(self.master, width=20, padx=3, pady=3)
+		self.forward["text"] = "⏩"
+		self.forward["command"] = self.forwardVideo
+		self.forward.grid(row=1, column=3, padx=2, pady=2)
 		
 		# Create a label to display the movie
 		self.label = Label(self.master, height=19)
@@ -100,18 +99,6 @@ class ClientExtend:
 		self.remainingTimeLabel = Label(self.master, text="Remaining Time: 00:00", font=("Arial", 12))
 		self.remainingTimeLabel.grid(row=2, column=2, padx=2, pady=2)
 
-		#create forward button
-		self.forward = Button(self.master, width=15, padx=3, pady=3, bg="blue", fg="white", font=("Arial", 12, "bold"))
-		self.forward["text"] = u"forward"
-		self.forward["command"] = self.forwardVideo
-		self.forward.grid(row=1, column=3, padx=2, sticky=E+W, pady=2)
-
-		#create backward button
-		self.backward = Button(self.master, width=15, padx=3, pady=3, bg="blue", fg="white", font=("Arial", 12, "bold"))
-		self.backward["text"] = u"backward"
-		self.backward["command"] = self.backwardVideo
-		self.backward.grid(row=1, column=4, padx=2, sticky=E+W, pady=2)
-
 	# Disable buttons at each state
 	def disableButtons(self):
 		if self.state == self.INIT:
@@ -124,8 +111,8 @@ class ClientExtend:
 			self.startPause["text"] = "▶️"
 			self.startPause["command"] = self.playMovie
 			self.teardown["state"] = "normal"
-			self.forward["state"] = "disable"
-			self.backward["state"] = "disable"
+			self.forward["state"] = "normal"
+			self.backward["state"] = "normal"
 		elif self.state == self.PLAYING:
 			self.startPause["text"] = "⏸"
 			self.startPause["command"] = self.pauseMovie
@@ -209,12 +196,6 @@ class ClientExtend:
 			self.sendRtspRequest(self.TEARDOWN)
 			time.sleep(0.5)
 			self.reset()
-
-	def fastForwardMovie(self):
-		pass
-
-	def rewindMovie(self):
-		pass
 	
 	def forwardVideo(self):
 		self.sendRtspRequest(self.FORWARD)
@@ -416,7 +397,7 @@ class ClientExtend:
 						self.state = self.READY
 						if self.beginTimer > 0:
 							self.endTimer = time.perf_counter()
-							self.totalTime += self.endTimer - self.beginTimer
+							self.totalTimer += self.endTimer - self.beginTimer
 							self.beginTimer = 0
 
 						# The play thread exits (set flag to exit while loop)
@@ -427,7 +408,7 @@ class ClientExtend:
 						self.state = self.INIT
 						self.endTimer = time.perf_counter()
 						# Flag the teardownAcked to close the socket.
-						self.totalTime += self.endTimer - self.beginTimer
+						self.totalTimer += self.endTimer - self.beginTimer
 						self.teardownAcked = 1 
 						
 	def displayStats(self):
@@ -445,9 +426,9 @@ class ClientExtend:
     		f"Packets Received: {self.packets} packets",
     		f"Packets Lost: {self.counter} packets",
     		f"Packet Loss Rate: {packetLossRate}%",
-    		f"Play time: {self.totalTime:.2f} seconds",
+    		f"Play time: {self.totalTimer:.2f} seconds",
     		f"Bytes received: {self.bytes} bytes",
-    		f"Video Data Rate: {int(self.bytes / self.totalTime)} bytes per second",
+    		f"Video Data Rate: {int(self.bytes / self.totalTimer)} bytes per second",
 		]
 
 		# Insert the information into the listbox
