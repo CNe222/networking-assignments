@@ -19,13 +19,14 @@ class ClientExtend:
 	PLAY = 1
 	PAUSE = 2
 	TEARDOWN = 3
-	
+	FORWARD = 5
+	BACKWARD = 6
 	# Initiation..
 	def __init__(self, master, serveraddr, serverport, rtpport, filename):
 		self.master = master
 		self.master.protocol("WM_DELETE_WINDOW", self.closeWindow)
 		self.createWidgets()
-		self.disableButtons()
+		# self.disableButtons()
 		self.serverAddr = serveraddr
 		self.serverPort = int(serverport)
 		self.rtpPort = int(rtpport)
@@ -37,6 +38,11 @@ class ClientExtend:
 		self.teardownAcked = 0
 		self.connectToServer()
 		self.frameNbr = 0
+		self.isForward = 0
+		self.isBackWard = 0
+		self.currentTime = 0
+		self.totalTime = 0
+		self.FPS = 0
 		
 	# THIS GUI IS JUST FOR REFERENCE ONLY, STUDENTS HAVE TO CREATE THEIR OWN GUI 	
 	def createWidgets(self):
@@ -65,10 +71,31 @@ class ClientExtend:
 		self.pause["text"] = "⏩"
 		self.pause["command"] = self.fastForwardMovie
 		self.pause.grid(row=1, column=3, padx=2, pady=2)
+		self.teardown.grid(row=1, column=5, padx=2, pady=2)
 		
 		# Create a label to display the movie
 		self.label = Label(self.master, height=19)
 		self.label.grid(row=0, column=0, columnspan=4, sticky=W+E+N+S, padx=5, pady=5) 
+		
+		#create a label to display totaltime of the movie
+		self.totalTimeLabel = Label(self.master, text="Total Time: 00:00", font=("Arial", 12))
+		self.totalTimeLabel.grid(row=2, column=1, padx=2, pady=2)
+
+		#create a label to display remaining time of the movie
+		self.remainingTimeLabel = Label(self.master, text="Remaining Time: 00:00", font=("Arial", 12))
+		self.remainingTimeLabel.grid(row=2, column=2, padx=2, pady=2)
+
+		#create forward button
+		self.forward = Button(self.master, width=15, padx=3, pady=3, bg="blue", fg="white", font=("Arial", 12, "bold"))
+		self.forward["text"] = u"forward"
+		self.forward["command"] = self.forwardVideo
+		self.forward.grid(row=1, column=3, padx=2, sticky=E+W, pady=2)
+
+		#create backward button
+		self.backward = Button(self.master, width=15, padx=3, pady=3, bg="blue", fg="white", font=("Arial", 12, "bold"))
+		self.backward["text"] = u"backward"
+		self.backward["command"] = self.backwardVideo
+		self.backward.grid(row=1, column=4, padx=2, sticky=E+W, pady=2)
 
 	# Disable buttons at each state
 	def disableButtons(self):
@@ -76,14 +103,20 @@ class ClientExtend:
 			self.startPause["text"] = "▶️"
 			self.startPause["command"] = self.playMovie
 			self.teardown["state"] = "disabled"
+			self.forward["state"] = "disable"
+			self.backward["state"] = "disable"
 		elif self.state == self.READY:
 			self.startPause["text"] = "▶️"
 			self.startPause["command"] = self.playMovie
 			self.teardown["state"] = "normal"
+			self.forward["state"] = "disable"
+			self.backward["state"] = "disable"
 		elif self.state == self.PLAYING:
 			self.startPause["text"] = "⏸"
 			self.startPause["command"] = self.pauseMovie
 			self.teardown["state"] = "normal"
+			self.forward["state"] = "normal"
+			self.backward["state"] = "normal"
 	
 	
 	def exitClient(self):
@@ -128,6 +161,9 @@ class ClientExtend:
 		self.teardownAcked = 0
 		self.connectToServer()
 		self.frameNbr = 0
+		self.isBackWard = 0
+		self.isForward = 0
+		self.currentTime = 0
 		# self.rtpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 	def teardownMovie(self):
@@ -146,6 +182,18 @@ class ClientExtend:
 	def rewindMovie(self):
 		pass
 	
+	def forwardVideo(self):
+		self.sendRtspRequest(self.FORWARD)
+		self.isForward = 1
+	
+	def backwardVideo(self):
+		self.sendRtspRequest(self.BACKWARD)
+		if self.frameNbr <= 50:
+			self.frameNbr = 0
+		else:
+			self.frameNbr -= 50
+		self.isBackWard = 1
+		
 	def listenRtp(self):		
 		"""Listen for RTP packets."""
 		while True:
@@ -156,11 +204,14 @@ class ClientExtend:
 					rtpPacket.decode(data)
 					
 					currFrameNbr = rtpPacket.seqNum()
+					self.currentTime = int(currFrameNbr  // self.FPS)
 					print("Current Seq Num: " + str(currFrameNbr))
 										
 					if currFrameNbr > self.frameNbr: # Discard the late packet
 						self.frameNbr = currFrameNbr
 						self.updateMovie(self.writeFrame(rtpPacket.getPayload()))
+					self.totalTimeLabel.configure(text="Total time: %02d:%02d" % (self.totalTime // 60, self.totalTime % 60))
+					self.remainingTimeLabel.configure(text="Remaining time: %02d:%02d" % ((self.totalTime - self.currentTime)// 60, (self.totalTime - self.currentTime) % 60))
 			except:
 				# Stop listening upon requesting PAUSE or TEARDOWN
 				if self.playEvent.isSet(): 
@@ -249,6 +300,15 @@ class ClientExtend:
 			
 			# Keep track of sent request
 			self.requestSent = self.TEARDOWN
+		elif requestCode == self.FORWARD:
+			self.rtspSeq +=1
+			req = "FORWARD " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + "\nSession: " + str(self.sessionId)
+			self.requestSent = self.FORWARD
+		
+		elif requestCode == self.BACKWARD:
+			self.rtspSeq +=1
+			req = "BACKWARD " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + "\nSession: " + str(self.sessionId)
+			self.requestSent = self.BACKWARD
 
 		else:
 			return
@@ -276,7 +336,7 @@ class ClientExtend:
 		# ex: data = "RTSP/1.0 200 OK\nCSeq: 1\nSession: 123456"
 		lines = data.split('\n')
 		seqNum = int(lines[1].split(' ')[1])
-		
+
 		# Process only if the server reply's sequence number is the same as the request's
 		if seqNum == self.rtspSeq:
 			session = int(lines[2].split(' ')[1])
@@ -292,6 +352,8 @@ class ClientExtend:
 						# TO COMPLETE
 						#-------------
 						# Update RTSP state.
+						self.totalTime = float(lines[3].split(' ')[1])
+						self.FPS = float(lines[4].split(' ')[1])
 						self.state = self.READY
 						# Open RTP port.
 						if not self.hasRtpSocket:
