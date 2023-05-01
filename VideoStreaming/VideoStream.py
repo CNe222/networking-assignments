@@ -8,57 +8,62 @@ class VideoStream:
 		except:
 			raise IOError
 		self.frameNum = 0
-		self.isForward = 0
-		self.totalFrame = 0
-	def get_total_time(self):
-		data = cv2.VideoCapture(self)
-		frames = data.get(cv2.CAP_PROP_FRAME_COUNT)
-		fps = data.get(cv2.CAP_PROP_FPS)
-	
-		seconds = round(frames / fps)
-		video_time = datetime.timedelta(seconds=seconds)
+		self.isForward = False
+		# init totalFrames to 0
+		self.totalFrames = 0
 
-		return seconds
+		# read through file to upate totalFrames
+		while True:
+			data = self.file.read(5)
+			if data:
+				framelength = int(data)
+				# Read the current frame
+				data = self.file.read(framelength)
+				self.totalFrames += 1
+			else:
+				self.file.seek(0)
+				break
+
+		self.totalTime = self.totalFrames * 0.05
+
+
+	def getTotalTime(self):
+		return self.totalTime
 	
 	def setForward(self):
 		self.isForward = 1
 		
 	def nextFrame(self):
 		"""Get next frame."""
-		if self.isForward == 1: #case client require forward video
-			forwardFrame = int(self.totalFrame*0.1)
-			remainFrame = int (self.totalFrame - self.frameNum)
-			if forwardFrame > remainFrame:
-				forwardFrame = remainFrame
-			self.isForward = 0
-		else:
-			forwardFrame = 1
-		if forwardFrame:
-			for i in range(forwardFrame):
-				data = self.file.read(5) # Get the framelength from the first 5 bits
-				if data: 
-					framelength = int(data)
-									
-					# Read the current frame
-					data = self.file.read(framelength)
-					self.frameNum += 1
-			return data
 		
-	def prevFrame(self):
-		prevFrames = int(self.totalFrame * 0.1)
-		if prevFrames >= self.frameNum:
-			data = self.file.seek(0)
-			self.frameNum = 0
-			if data:
+		forwardFrames = 1
+		if self.isForward:
+			forwardSeconds = 2
+			forwardFrames = int(self.getFPS() * forwardSeconds)
+			self.isForward = False
+
+		for _ in range(forwardFrames):
+			data = self.file.read(5) # Get the framelength from the first 5 bits
+
+			if data: 
 				framelength = int(data)
+				# Read the current frame
 				data = self.file.read(framelength)
 				self.frameNum += 1
-		else:
-			data = self.file.seek(0)
-			back_Frames = self.frameNum - prevFrames
-			self.frameNum = 0
-			for i in range(back_Frames):
-				data = self.nextFrame()
+		return data
+		
+	def prevFrame(self):
+		backwardSeconds = 2
+		backwardFrames = int(self.getFPS() * backwardSeconds)
+		
+		# change the pointer of video to the beginning of the file
+		data = self.file.seek(0)
+		# The frame number that we want to reach
+		prevFrameNum = self.frameNum - backwardFrames
+		self.frameNum = 0
+		for _ in range(prevFrameNum):
+			data = self.nextFrame()
+
 		return data
 
 	def frameNbr(self):
@@ -66,7 +71,6 @@ class VideoStream:
 		return self.frameNum
 	
 	def getFPS(self):
-		data = cv2.VideoCapture(self)
-		fps = data.get(cv2.CAP_PROP_FPS)
+		fps = self.totalFrames // self.totalTime
 		return fps
 	

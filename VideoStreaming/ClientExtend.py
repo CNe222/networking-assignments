@@ -26,7 +26,7 @@ class ClientExtend:
 		self.master = master
 		self.master.protocol("WM_DELETE_WINDOW", self.closeWindow)
 		self.createWidgets()
-		self.disableButtons()
+		# self.disableButtons()
 		self.serverAddr = serveraddr
 		self.serverPort = int(serverport)
 		self.rtpPort = int(rtpport)
@@ -69,7 +69,7 @@ class ClientExtend:
 		self.teardown = Button(self.master, width=20, padx=3, pady=3)
 		self.teardown["text"] = "Teardown"
 		self.teardown["command"] =  self.teardownMovie
-		self.teardown.grid(row=1, column=3, padx=2, pady=2)
+		self.teardown.grid(row=1, column=5, padx=2, pady=2)
 		
 		# Create a label to display the movie
 		self.label = Label(self.master, height=19)
@@ -85,15 +85,15 @@ class ClientExtend:
 
 		#create forward button
 		self.forward = Button(self.master, width=15, padx=3, pady=3, bg="blue", fg="white", font=("Arial", 12, "bold"))
-		self.forward["text"] = u"\u21BB"
+		self.forward["text"] = u"forward"
 		self.forward["command"] = self.forwardVideo
-		self.forward.grid(row=1, column=2, padx=2, sticky=E+W, pady=2)
+		self.forward.grid(row=1, column=3, padx=2, sticky=E+W, pady=2)
 
 		#create backward button
 		self.backward = Button(self.master, width=15, padx=3, pady=3, bg="blue", fg="white", font=("Arial", 12, "bold"))
-		self.backward["text"] = u"\u21BA"
+		self.backward["text"] = u"backward"
 		self.backward["command"] = self.backwardVideo
-		self.backward.grid(row=1, column=2, padx=2, sticky=E+W, pady=2)
+		self.backward.grid(row=1, column=4, padx=2, sticky=E+W, pady=2)
 
 	# Disable buttons at each state
 	def disableButtons(self):
@@ -330,7 +330,7 @@ class ClientExtend:
 		# ex: data = "RTSP/1.0 200 OK\nCSeq: 1\nSession: 123456"
 		lines = data.split('\n')
 		seqNum = int(lines[1].split(' ')[1])
-		
+
 		# Process only if the server reply's sequence number is the same as the request's
 		if seqNum == self.rtspSeq:
 			session = int(lines[2].split(' ')[1])
