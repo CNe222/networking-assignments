@@ -1,6 +1,9 @@
+import random, math
+import time
 from random import randint
 import sys, traceback, threading, socket
-
+from tkinter import *
+import tkinter.messagebox
 from VideoStream import VideoStream
 from RtpPacket import RtpPacket
 
@@ -9,6 +12,7 @@ class ServerWorker:
 	PLAY = 'PLAY'
 	PAUSE = 'PAUSE'
 	TEARDOWN = 'TEARDOWN'
+	DESCRIBE = 'DESCRIBE'
 	FORWARD = 'FORWARD'
 	BACKWARD = 'BACKWARD'
 	
@@ -53,7 +57,6 @@ class ServerWorker:
 		
 		# Get the RTSP sequence number 
 		seq = request[1].split(' ')
-		
 		# Process SETUP request
 		if requestType == self.SETUP:
 			if self.state == self.INIT:
@@ -114,6 +117,12 @@ class ServerWorker:
 			
 			self.replyRtsp(self.OK_200, seq[1])
 			self.clientInfo['rtpSocket'].close()
+
+		elif requestType == self.DESCRIBE:
+			if self.state != self.INIT:
+				print("processing DESCRIBE\n")
+				
+				self.replyDescribe(self.OK_200, seq[1], filename)
 				
 	def sendRtp(self):
 		"""Send RTP packets over UDP."""
@@ -172,6 +181,25 @@ class ServerWorker:
 			print("404 NOT FOUND")
 		elif code == self.CON_ERR_500:
 			print("500 CONNECTION ERROR")
+
+	def replyDescribe(self, code, seq, filename):
+		"""Send RTSP Describe reply to the client."""
+		if code == self.OK_200:
+			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
+
+			descriptionBody = "\nVersion = extend"
+			descriptionBody += "\nVideo " + self.clientInfo['rtpPort'] + " RTP/AVP 26" # MJPEG type is 26
+			descriptionBody += "\nControl: streamid =" + str(self.clientInfo['session'])
+			descriptionBody += "\nMimetype: video/MJPEG\""
+
+			reply += "\nContent-Base: " + filename
+			reply += "\nContent-Type: " + "application/sdp"
+			reply += descriptionBody
+
+			print("Response:\n" + reply + '\n')
+
+			connSocket = self.clientInfo['rtspSocket'][0]
+			connSocket.send(reply.encode())
 	
 	def replySetup(self, code, seq):
 		"""Send RTSP reply to the client."""

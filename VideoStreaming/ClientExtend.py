@@ -3,7 +3,7 @@ import tkinter.messagebox
 from PIL import Image, ImageTk
 import socket, threading, sys, traceback, os
 import time
-
+import datetime
 from RtpPacket import RtpPacket
 
 CACHE_FILE_NAME = "cache-"
@@ -19,6 +19,7 @@ class ClientExtend:
 	PLAY = 1
 	PAUSE = 2
 	TEARDOWN = 3
+	DESCRIBE = 4
 	FORWARD = 5
 	BACKWARD = 6
 	
@@ -32,7 +33,7 @@ class ClientExtend:
 		self.master = master
 		self.master.protocol("WM_DELETE_WINDOW", self.closeWindow)
 		self.createWidgets()
-		# self.disableButtons()
+		self.disableButtons()
 		self.serverAddr = serveraddr
 		self.serverPort = int(serverport)
 		self.rtpPort = int(rtpport)
@@ -81,6 +82,12 @@ class ClientExtend:
 		self.teardown["command"] =  self.teardownMovie
 		self.teardown.grid(row=1, column=2, padx=2, pady=2)
 
+		# Create Describe Button
+		self.describe = Button(self.master, width=15, padx=3, pady=3)
+		self.describe["text"] = "Describe ★"
+		self.describe["command"] = self.describeMovie
+		self.describe.grid(row=2, column=3, padx=2, pady=2)
+
 		# Create Fast Foward button			
 		self.forward = Button(self.master, width=20, padx=3, pady=3)
 		self.forward["text"] = "⏩"
@@ -105,18 +112,21 @@ class ClientExtend:
 			self.startPause["text"] = "▶️"
 			self.startPause["command"] = self.playMovie
 			self.teardown["state"] = "disabled"
+			self.describe["state"] = "disabled"
 			self.forward["state"] = "disable"
 			self.backward["state"] = "disable"
 		elif self.state == self.READY:
 			self.startPause["text"] = "▶️"
 			self.startPause["command"] = self.playMovie
 			self.teardown["state"] = "normal"
+			self.describe["state"] = "normal"
 			self.forward["state"] = "normal"
 			self.backward["state"] = "normal"
 		elif self.state == self.PLAYING:
 			self.startPause["text"] = "⏸"
 			self.startPause["command"] = self.pauseMovie
 			self.teardown["state"] = "normal"
+			self.describe["state"] = "normal"
 			self.forward["state"] = "normal"
 			self.backward["state"] = "normal"
 	
@@ -196,6 +206,10 @@ class ClientExtend:
 			self.sendRtspRequest(self.TEARDOWN)
 			time.sleep(0.5)
 			self.reset()
+
+	def describeMovie(self):
+		"""Describe button handler"""
+		self.sendRtspRequest(self.DESCRIBE)
 	
 	def forwardVideo(self):
 		self.sendRtspRequest(self.FORWARD)
@@ -327,6 +341,12 @@ class ClientExtend:
 			
 			# Keep track of sent request
 			self.requestSent = self.TEARDOWN
+
+		elif requestCode == self.DESCRIBE:
+			self.rtspSeq += 1
+			req = "DESCRIBE " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + "\nSession: " + str(self.sessionId)
+			self.requestSent = self.DESCRIBE
+
 		elif requestCode == self.FORWARD:
 			self.rtspSeq +=1
 			req = "FORWARD " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + "\nSession: " + str(self.sessionId)
@@ -410,6 +430,27 @@ class ClientExtend:
 						# Flag the teardownAcked to close the socket.
 						self.totalTimer += self.endTimer - self.beginTimer
 						self.teardownAcked = 1 
+
+					elif self.requestSent == self.DESCRIBE:
+						self.displayDescription(lines)
+
+	def displayDescription(self, lines):
+		top = Toplevel()
+		top.title("Description")
+		top.geometry('300x180')
+		Lb1 = Listbox(top, width=80, height=20)
+		Lb1.insert(1, "Describe: ")
+		Lb1.insert(2, "Name Video: " + str(self.fileName))
+		Lb1.insert(3, lines[1])
+		Lb1.insert(4, lines[2])
+		Lb1.insert(5, lines[3])
+		Lb1.insert(6, lines[4])
+		Lb1.insert(7, lines[5])
+		Lb1.insert(8, lines[6])
+		Lb1.insert(9, lines[7])
+		Lb1.insert(10, lines[8])
+		Lb1.insert(11, "Current time: " + "%02d:%02d" % (self.currentTime // 60, self.currentTime % 60))
+		Lb1.pack()
 						
 	def displayStats(self):
 		"""Displays observed statistics"""
