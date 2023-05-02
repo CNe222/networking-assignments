@@ -33,7 +33,7 @@ class ClientExtend:
 		self.master = master
 		self.master.protocol("WM_DELETE_WINDOW", self.closeWindow)
 		self.createWidgets()
-		# self.disableButtons()
+		self.disableButtons()
 		self.serverAddr = serveraddr
 		self.serverPort = int(serverport)
 		self.rtpPort = int(rtpport)
@@ -112,21 +112,21 @@ class ClientExtend:
 			self.startPause["text"] = "▶️"
 			self.startPause["command"] = self.playMovie
 			self.teardown["state"] = "disabled"
-			self.describe['state'] = "disabled"
+			self.describe["state"] = "disabled"
 			self.forward["state"] = "disable"
 			self.backward["state"] = "disable"
 		elif self.state == self.READY:
 			self.startPause["text"] = "▶️"
 			self.startPause["command"] = self.playMovie
 			self.teardown["state"] = "normal"
-			self.describe['state'] = "normal"
+			self.describe["state"] = "normal"
 			self.forward["state"] = "normal"
 			self.backward["state"] = "normal"
 		elif self.state == self.PLAYING:
 			self.startPause["text"] = "⏸"
 			self.startPause["command"] = self.pauseMovie
 			self.teardown["state"] = "normal"
-			self.describe['state'] = "normal"
+			self.describe["state"] = "normal"
 			self.forward["state"] = "normal"
 			self.backward["state"] = "normal"
 	
@@ -344,7 +344,7 @@ class ClientExtend:
 
 		elif requestCode == self.DESCRIBE:
 			self.rtspSeq += 1
-			req = "DESCRIBE" + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + "\nSession: " + str(self.sessionId)
+			req = "DESCRIBE " + self.fileName + " RTSP/1.0\nCSeq: " + str(self.rtspSeq) + "\nSession: " + str(self.sessionId)
 			self.requestSent = self.DESCRIBE
 
 		elif requestCode == self.FORWARD:
@@ -432,9 +432,7 @@ class ClientExtend:
 						self.teardownAcked = 1 
 
 					elif self.requestSent == self.DESCRIBE:
-						# self.state = ...
 						self.displayDescription(lines)
-						self.disableButtons()
 
 	def displayDescription(self, lines):
 		top = Toplevel()
@@ -451,7 +449,7 @@ class ClientExtend:
 		Lb1.insert(8, lines[6])
 		Lb1.insert(9, lines[7])
 		Lb1.insert(10, lines[8])
-		Lb1.insert(11, "Thoi diem trong video: " + "%02d:%02d" % (self.currentTime // 60, self.currentTime % 60))
+		Lb1.insert(11, "Current time: " + "%02d:%02d" % (self.currentTime // 60, self.currentTime % 60))
 		Lb1.pack()
 						
 	def displayStats(self):

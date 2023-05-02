@@ -12,7 +12,7 @@ class ServerWorker:
 	PLAY = 'PLAY'
 	PAUSE = 'PAUSE'
 	TEARDOWN = 'TEARDOWN'
-	DESCRIBE = "DESCRIBE"
+	DESCRIBE = 'DESCRIBE'
 	FORWARD = 'FORWARD'
 	BACKWARD = 'BACKWARD'
 	
@@ -57,7 +57,6 @@ class ServerWorker:
 		
 		# Get the RTSP sequence number 
 		seq = request[1].split(' ')
-		
 		# Process SETUP request
 		if requestType == self.SETUP:
 			if self.state == self.INIT:
@@ -122,9 +121,7 @@ class ServerWorker:
 		elif requestType == self.DESCRIBE:
 			if self.state != self.INIT:
 				print("processing DESCRIBE\n")
-				# try :
-				# 	self.clientInfo['event'].set()
-				# except: pass
+				
 				self.replyDescribe(self.OK_200, seq[1], filename)
 				
 	def sendRtp(self):
@@ -188,19 +185,21 @@ class ServerWorker:
 	def replyDescribe(self, code, seq, filename):
 		"""Send RTSP Describe reply to the client."""
 		if code == self.OK_200:
-			# print("200 OK")
-			myreply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
+			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
 
-			descriptionBody = "\nVersion = e"
-			descriptionBody += "\nVideo " + self.clientInfo['rtpPort'] + " RTP/AVP " + str(MJPEG_TYPE)
+			descriptionBody = "\nVersion = extend"
+			descriptionBody += "\nVideo " + self.clientInfo['rtpPort'] + " RTP/AVP 26" # MJPEG type is 26
 			descriptionBody += "\nControl: streamid =" + str(self.clientInfo['session'])
 			descriptionBody += "\nMimetype: video/MJPEG\""
 
-			myreply += "\nContent-Base: " + filename
-			myreply += "\nContent-Type: " + "application/sdp"
-			myreply += descriptionBody
+			reply += "\nContent-Base: " + filename
+			reply += "\nContent-Type: " + "application/sdp"
+			reply += descriptionBody
+
+			print("Response:\n" + reply + '\n')
+
 			connSocket = self.clientInfo['rtspSocket'][0]
-			connSocket.send(myreply.encode())
+			connSocket.send(reply.encode())
 	
 	def replySetup(self, code, seq):
 		"""Send RTSP reply to the client."""
