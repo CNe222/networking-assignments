@@ -206,6 +206,7 @@ class ClientExtend:
 			self.sendRtspRequest(self.TEARDOWN)
 			time.sleep(0.5)
 			self.reset()
+			self.label.image = ''
 
 	def describeMovie(self):
 		"""Describe button handler"""

@@ -140,6 +140,7 @@ class Client:
 			self.sendRtspRequest(self.TEARDOWN)
 			time.sleep(0.5)
 			self.reset()
+			self.label.image = ''
 	
 	def listenRtp(self):		
 		"""Listen for RTP packets."""
