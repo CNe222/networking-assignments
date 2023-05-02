@@ -95,7 +95,7 @@ class ClientExtend:
 		self.forward.grid(row=1, column=3, padx=2, pady=2)
 		
 		# Create a label to display the movie
-		self.label = Label(self.master, height=19)
+		self.label = Label(self.master, height=19, bg= "#000000")
 		self.label.grid(row=0, column=0, columnspan=4, sticky=W+E+N+S, padx=5, pady=5) 
 		
 		#create a label to display totaltime of the movie
