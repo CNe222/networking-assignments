@@ -48,12 +48,10 @@ class ClientExtend:
 		self.isForward = 0
 		self.isBackWard = 0
 		self.currentTime = 0
+		self.currentTimeFloat = 0
 		self.totalTime = 0
 		self.FPS = 0
 		
-		self.beginTimer = 0 
-		self.endTimer = 0
-		self.totalTimer = 0
 		self.totalPackets = 0
 		self.bytes = 0
 		self.packets = 0
@@ -158,8 +156,6 @@ class ClientExtend:
 		if self.state == self.INIT:
 			self.firstPlay = False
 			self.isPlaying = True
-			self.beginTimer = 0 
-			self.endTimer = 0
 			self.totalTime = 0
 			self.totalPackets = 0
 			self.bytes = 0
@@ -195,14 +191,17 @@ class ClientExtend:
 		self.isBackWard = 0
 		self.isForward = 0
 		self.currentTime = 0
+		self.currentTimeFloat = 0
 		# self.rtpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 	def teardownMovie(self):
 		"""Teardown button handler."""
+
 		if self.state != self.INIT:
 			# Remove cache image stored in folder (ex: cache-123456.jpg)
 			if os.path.isfile(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT):
 				os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT)
+			self.displayStats()
 			self.sendRtspRequest(self.TEARDOWN)
 			time.sleep(0.5)
 			self.reset()
@@ -236,6 +235,7 @@ class ClientExtend:
 					packetArrivalTime = time.perf_counter()
 					currFrameNbr = rtpPacket.seqNum()
 					self.currentTime = int(currFrameNbr  // self.FPS)
+					self.currentTimeFloat = currFrameNbr / self.FPS
 					print("Current Seq Num: " + str(currFrameNbr))
 					self.bytes += len(rtpPacket.getPacket())
 										
@@ -261,7 +261,6 @@ class ClientExtend:
 				# Upon receiving ACK for TEARDOWN request,
 				# close the RTP socket
 				if self.teardownAcked == 1:
-					self.displayStats()
 					self.rtpSocket.shutdown(socket.SHUT_RDWR)
 					self.rtpSocket.close()
 					self.hasRtpSocket = False
@@ -410,26 +409,16 @@ class ClientExtend:
 					elif self.requestSent == self.PLAY:
 						self.state = self.PLAYING
 
-						if self.beginTimer == 0:
-							self.beginTimer = time.perf_counter()
-
 						self.disableButtons()
 					elif self.requestSent == self.PAUSE:
 						self.state = self.READY
-						if self.beginTimer > 0:
-							self.endTimer = time.perf_counter()
-							self.totalTimer += self.endTimer - self.beginTimer
-							self.beginTimer = 0
 
 						# The play thread exits (set flag to exit while loop)
 						self.playEvent.set()
 						self.disableButtons()
 
 					elif self.requestSent == self.TEARDOWN:
-						self.state = self.INIT
-						self.endTimer = time.perf_counter()
-						# Flag the teardownAcked to close the socket.
-						self.totalTimer += self.endTimer - self.beginTimer
+						self.state = self.INIT	
 						self.teardownAcked = 1 
 
 					elif self.requestSent == self.DESCRIBE:
@@ -468,9 +457,9 @@ class ClientExtend:
     		f"Packets Received: {self.packets} packets",
     		f"Packets Lost: {self.counter} packets",
     		f"Packet Loss Rate: {packetLossRate}%",
-    		f"Play time: {self.totalTimer:.2f} seconds",
+    		f"Play time: {self.currentTimeFloat:.2f} seconds",
     		f"Bytes received: {self.bytes} bytes",
-    		f"Video Data Rate: {int(self.bytes / self.totalTimer)} bytes per second",
+    		f"Video Data Rate: {int(self.bytes / self.currentTimeFloat)} bytes per second",
 		]
 
 		# Insert the information into the listbox

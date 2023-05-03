@@ -1,4 +1,3 @@
-import cv2
 import datetime
 class VideoStream:
 	def __init__(self, filename):
