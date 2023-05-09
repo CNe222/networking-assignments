@@ -240,7 +240,7 @@ class ClientExtend:
 					self.bytes += len(rtpPacket.getPacket())
 
 					try:
-						if (self.frameNbr + 1 != rtpPacket.seqNum()):
+						if (self.frameNbr + 1 != rtpPacket.seqNum() and self.isForward == 0 and self.isBackWard == 0):
 							self.counter += 1
 
 					except:
