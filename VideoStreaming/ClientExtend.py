@@ -244,9 +244,7 @@ class ClientExtend:
 							self.counter += 1
 
 					except:
-						print("seqNum() Loi \n")
 						traceback.print_exc(file=sys.stdout)
-						print("\n")
 
 					if currFrameNbr > self.frameNbr: # Discard the late packet
 						print(currFrameNbr)
