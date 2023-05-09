@@ -238,7 +238,16 @@ class ClientExtend:
 					self.currentTimeFloat = currFrameNbr / self.FPS
 					print("Current Seq Num: " + str(currFrameNbr))
 					self.bytes += len(rtpPacket.getPacket())
-										
+
+					try:
+						if (self.frameNbr + 1 != rtpPacket.seqNum()):
+							self.counter += 1
+
+					except:
+						print("seqNum() Loi \n")
+						traceback.print_exc(file=sys.stdout)
+						print("\n")
+
 					if currFrameNbr > self.frameNbr: # Discard the late packet
 						print(currFrameNbr)
 						self.frameNbr = currFrameNbr
